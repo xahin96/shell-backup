@@ -11,7 +11,7 @@ previous_checksum=""
 
 # Function to calculate checksum of the target directory
 calculate_checksum() {
-  find "$target_directory" -type f -exec md5sum {} + | md5sum | cut -d' ' -f1
+  find "$target_directory" -type f -exec md5 {} + | awk '{print $1}' | md5
 }
 
 # Main loop
@@ -63,12 +63,3 @@ while true; do
   # Sleep for 10 seconds before starting again
   sleep 10
 done
-
-
-#  # Output the current timestamp
-#  echo "Backup recorded at: $current_time"
-#  echo "cbw_counter $cbw_counter"
-#  echo "ibw_counter $ibw_counter"
-#  echo "dbw_counter $dbw_counter"
-#  # Append the current timestamp to backup.log
-#  echo "$current_time" >> backup.log
