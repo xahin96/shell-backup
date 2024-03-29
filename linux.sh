@@ -50,6 +50,29 @@ check_and_create_dbw_location() {
     fi
 }
 
+get_recently_modified_files() {
+    local seconds="$1"
+
+    # Step 1: Find files in the global target directory
+    local files=$(find "$target_directory" -type f)
+
+    # Step 2: Extract modification times and filenames using stat
+    local file_info=$(stat --format='%Y :%y %n' $files)
+
+    # Step 3: Calculate the timestamp for N seconds ago
+    local timestamp=$(date -d "now - $seconds seconds" +'%s')
+
+    # Step 4: Filter files modified within the last N seconds
+    local filtered_files=$(echo "$file_info" | awk -v d="$timestamp" '$1 >= d {print $NF}')
+
+    # Step 5: Return the filtered files
+    echo "$filtered_files"
+}
+
+sleep_after_backup(){
+  sleep 10
+}
+
 # Main loop
 while true; do
     ((cbw_counter++))
@@ -73,12 +96,12 @@ while true; do
         echo "$current_time Error creating tar archive: $cbw_location/cbw24-$cbw_counter.tar" >> backup.log
     fi
 
-    sleep 120
+    sleep_after_backup
 
     # STEP 2
     # Listing all the files that has been changed within past 2 minutes
-    file_list=$(find "$target_directory" -type f -exec stat --format '%Y :%y %n' {} \; | \
-        awk -v d="$(date -d 'now - 2 minutes' +'%s')" '$1 >= d {print $NF}')
+    file_list=$(get_recently_modified_files "10")
+
     # Compare checksums to check for changes
     if [ -n "$file_list" ]; then
         ((ibw_counter++))
@@ -92,12 +115,12 @@ while true; do
         echo "$current_time No changes-Incremental backup was not created" >> backup.log
     fi
 
-    sleep 120
+    sleep_after_backup
 
     # STEP 3
     # Listing all the files that has been changed within past 2 minutes
-    file_list=$(find "$target_directory" -type f -exec stat --format '%Y :%y %n' {} \; | \
-        awk -v d="$(date -d 'now - 2 minutes' +'%s')" '$1 >= d {print $NF}')
+    file_list=$(get_recently_modified_files "10")
+
     # Compare checksums to check for changes
     if [ -n "$file_list" ]; then
         ((ibw_counter++))
@@ -111,12 +134,12 @@ while true; do
         echo "$current_time No changes-Incremental backup was not created" >> backup.log
     fi
 
-    sleep 120
+    sleep_after_backup
 
     # STEP 4
     # Listing all the files that has been changed within past 2 minutes
-    file_list=$(find "$target_directory" -type f -exec stat --format '%Y :%y %n' {} \; | \
-        awk -v d="$(date -d 'now - 6 minutes' +'%s')" '$1 >= d {print $NF}')
+    file_list=$(get_recently_modified_files "30")
+
     # Compare checksums to check for changes
     if [ -n "$file_list" ]; then
         ((dbw_counter++))
@@ -130,12 +153,12 @@ while true; do
         echo "$current_time No changes-differential backup was not created" >> backup.log
     fi
 
-    sleep 120
+    sleep_after_backup
 
     # STEP 5
     # Listing all the files that has been changed within past 2 minutes
-    file_list=$(find "$target_directory" -type f -exec stat --format '%Y :%y %n' {} \; | \
-        awk -v d="$(date -d 'now - 2 minutes' +'%s')" '$1 >= d {print $NF}')
+    file_list=$(get_recently_modified_files "10")
+
     # Compare checksums to check for changes
     if [ -n "$file_list" ]; then
         ((ibw_counter++))
