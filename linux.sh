@@ -1,12 +1,9 @@
 #!/bin/bash
 
-#---------------------------------------------------- Variable Declaration ----------------------------------------------------
 cbw_counter=0
 ibw_counter=0
 dbw_counter=0
 
-
-#---------------------------------------------------- File path Declaration ----------------------------------------------------
 username=$(whoami)
 cbw_location="/home/$username/backup/cbw24"
 ibw_location="/home/$username/backup/ib24"
@@ -14,17 +11,9 @@ dbw_location="/home/$username/backup/db24"
 target_directory="/home/$username/Desktop/ASP/assignment5/a"
 previous_checksum=""
 
-
-#---------------------------------------------------- calculate_checksum ----------------------------------------------------
-# Function to calculate checksum of the target directory
-calculate_checksum() {
-    find "$target_directory" -type f -exec md5sum {} + | md5sum | cut -d' ' -f1
-}
-
 check_and_create_backup_log() {
     if [ ! -f "backup.log" ]; then
         touch backup.log
-        echo "Created backup.log"
     fi
 }
 
@@ -63,11 +52,7 @@ check_and_create_dbw_location() {
 
 # Main loop
 while true; do
-#---------------------------------------------------- counter increment ----------------------------------------------------
     ((cbw_counter++))
-
-    ((dbw_counter++))
-
 
     # Check if backup.log exists, if not create it
     check_and_create_backup_log
@@ -88,12 +73,12 @@ while true; do
         echo "$current_time Error creating tar archive: $cbw_location/cbw24-$cbw_counter.tar" >> backup.log
     fi
 
-    sleep 20
+    sleep 120
 
     # STEP 2
     # Listing all the files that has been changed within past 2 minutes
     file_list=$(find "$target_directory" -type f -exec stat --format '%Y :%y %n' {} \; | \
-        awk -v d="$(date -d 'now - 20 seconds' +'%s')" '$1 >= d {print $NF}')
+        awk -v d="$(date -d 'now - 2 minutes' +'%s')" '$1 >= d {print $NF}')
     # Compare checksums to check for changes
     if [ -n "$file_list" ]; then
         ((ibw_counter++))
@@ -104,14 +89,15 @@ while true; do
             echo "$current_time Error creating tar archive: $ibw_location/ibw24-$ibw_counter.tar" >> backup.log
         fi
     else
-        echo "No changes detected. Skipping tar creation."
         echo "$current_time No changes-Incremental backup was not created" >> backup.log
     fi
+
+    sleep 120
 
     # STEP 3
     # Listing all the files that has been changed within past 2 minutes
     file_list=$(find "$target_directory" -type f -exec stat --format '%Y :%y %n' {} \; | \
-        awk -v d="$(date -d 'now - 20 seconds' +'%s')" '$1 >= d {print $NF}')
+        awk -v d="$(date -d 'now - 2 minutes' +'%s')" '$1 >= d {print $NF}')
     # Compare checksums to check for changes
     if [ -n "$file_list" ]; then
         ((ibw_counter++))
@@ -122,14 +108,34 @@ while true; do
             echo "$current_time Error creating tar archive: $ibw_location/ibw24-$ibw_counter.tar" >> backup.log
         fi
     else
-        echo "No changes detected. Skipping tar creation."
         echo "$current_time No changes-Incremental backup was not created" >> backup.log
     fi
+
+    sleep 120
 
     # STEP 4
     # Listing all the files that has been changed within past 2 minutes
     file_list=$(find "$target_directory" -type f -exec stat --format '%Y :%y %n' {} \; | \
-        awk -v d="$(date -d 'now - 20 seconds' +'%s')" '$1 >= d {print $NF}')
+        awk -v d="$(date -d 'now - 6 minutes' +'%s')" '$1 >= d {print $NF}')
+    # Compare checksums to check for changes
+    if [ -n "$file_list" ]; then
+        ((dbw_counter++))
+        # Create tar backup of target_directory in dbw_location
+        if echo "$file_list" | tar -cf "$dbw_location/dbw24-$dbw_counter.tar" -T -; then
+            echo "$current_time dbw24-$dbw_counter.tar was created" >> backup.log
+        else
+            echo "$current_time Error creating tar archive: $dbw_location/dbw24-$dbw_counter.tar" >> backup.log
+        fi
+    else
+        echo "$current_time No changes-differential backup was not created" >> backup.log
+    fi
+
+    sleep 120
+
+    # STEP 5
+    # Listing all the files that has been changed within past 2 minutes
+    file_list=$(find "$target_directory" -type f -exec stat --format '%Y :%y %n' {} \; | \
+        awk -v d="$(date -d 'now - 2 minutes' +'%s')" '$1 >= d {print $NF}')
     # Compare checksums to check for changes
     if [ -n "$file_list" ]; then
         ((ibw_counter++))
@@ -140,7 +146,6 @@ while true; do
             echo "$current_time Error creating tar archive: $ibw_location/ibw24-$ibw_counter.tar" >> backup.log
         fi
     else
-        echo "No changes detected. Skipping tar creation."
         echo "$current_time No changes-Incremental backup was not created" >> backup.log
     fi
 
