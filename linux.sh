@@ -65,7 +65,7 @@ check_and_create_dbw_location() {
 while true; do
 #---------------------------------------------------- counter increment ----------------------------------------------------
     ((cbw_counter++))
-    ((ibw_counter++))
+
     ((dbw_counter++))
 
 
@@ -83,12 +83,10 @@ while true; do
     # STEP 1
     # Create tar backup of target_directory in cbw_location
     if tar -cf "$cbw_location/cbw24-$cbw_counter.tar" "$target_directory"; then
-        echo "Tar archive created successfully: $cbw_location/cbw24-$cbw_counter.tar"
-        echo "$current_time " >> backup.log
+        echo "$current_time cbw24-$cbw_counter.tar was created" >> backup.log
     else
-        echo "Error creating tar archive: $cbw_location/cbw24-$cbw_counter.tar"
+        echo "$current_time Error creating tar archive: $cbw_location/cbw24-$cbw_counter.tar" >> backup.log
     fi
-
 
     sleep 20
 
@@ -98,15 +96,52 @@ while true; do
         awk -v d="$(date -d 'now - 20 seconds' +'%s')" '$1 >= d {print $NF}')
     # Compare checksums to check for changes
     if [ -n "$file_list" ]; then
-        # Create tar backup of target_directory in cbw_location
-        if echo "$file_list" | tar -cf "$cbw_location/cbw24-$cbw_counter.tar" -T -; then
-            echo "Tar archive created successfully: $cbw_location/cbw24-$cbw_counter.tar"
-            echo "$current_time " >> backup.log
+        ((ibw_counter++))
+        # Create tar backup of target_directory in ibw_location
+        if echo "$file_list" | tar -cf "$ibw_location/ibw24-$ibw_counter.tar" -T -; then
+            echo "$current_time ibw24-$ibw_counter.tar was created" >> backup.log
         else
-            echo "Error creating tar archive: $cbw_location/cbw24-$cbw_counter.tar"
+            echo "$current_time Error creating tar archive: $ibw_location/ibw24-$ibw_counter.tar" >> backup.log
         fi
     else
         echo "No changes detected. Skipping tar creation."
         echo "$current_time No changes-Incremental backup was not created" >> backup.log
     fi
+
+    # STEP 3
+    # Listing all the files that has been changed within past 2 minutes
+    file_list=$(find "$target_directory" -type f -exec stat --format '%Y :%y %n' {} \; | \
+        awk -v d="$(date -d 'now - 20 seconds' +'%s')" '$1 >= d {print $NF}')
+    # Compare checksums to check for changes
+    if [ -n "$file_list" ]; then
+        ((ibw_counter++))
+        # Create tar backup of target_directory in ibw_location
+        if echo "$file_list" | tar -cf "$ibw_location/ibw24-$ibw_counter.tar" -T -; then
+            echo "$current_time ibw24-$ibw_counter.tar was created" >> backup.log
+        else
+            echo "$current_time Error creating tar archive: $ibw_location/ibw24-$ibw_counter.tar" >> backup.log
+        fi
+    else
+        echo "No changes detected. Skipping tar creation."
+        echo "$current_time No changes-Incremental backup was not created" >> backup.log
+    fi
+
+    # STEP 4
+    # Listing all the files that has been changed within past 2 minutes
+    file_list=$(find "$target_directory" -type f -exec stat --format '%Y :%y %n' {} \; | \
+        awk -v d="$(date -d 'now - 20 seconds' +'%s')" '$1 >= d {print $NF}')
+    # Compare checksums to check for changes
+    if [ -n "$file_list" ]; then
+        ((ibw_counter++))
+        # Create tar backup of target_directory in ibw_location
+        if echo "$file_list" | tar -cf "$ibw_location/ibw24-$ibw_counter.tar" -T -; then
+            echo "$current_time ibw24-$ibw_counter.tar was created" >> backup.log
+        else
+            echo "$current_time Error creating tar archive: $ibw_location/ibw24-$ibw_counter.tar" >> backup.log
+        fi
+    else
+        echo "No changes detected. Skipping tar creation."
+        echo "$current_time No changes-Incremental backup was not created" >> backup.log
+    fi
+
 done
