@@ -5,15 +5,16 @@ ibw_counter=0
 dbw_counter=0
 
 username=$(whoami)
-cbw_location="/home/$username/backup/cbw24"
-ibw_location="/home/$username/backup/ib24"
-dbw_location="/home/$username/backup/db24"
-target_directory="/home/$username/Desktop/ASP/assignment5/a"
-previous_checksum=""
+cbw_location="/home/$username/home/backup/cbw24"
+ibw_location="/home/$username/home/backup/ib24"
+dbw_location="/home/$username/home/backup/db24"
+backup_log_loc="/home/$username/home/backup"
+backup_dir="/home/$username/home"
+target_directory="/home/$username/Desktop"
 
 check_and_create_backup_log() {
-    if [ ! -f "backup.log" ]; then
-        touch backup.log
+    if [ ! -f "$backup_log_loc/backup.log" ]; then
+        touch "$backup_log_loc/backup.log"
     fi
 }
 
@@ -53,8 +54,13 @@ check_and_create_dbw_location() {
 get_recently_modified_files() {
     local seconds="$1"
 
-    # Step 1: Find files in the global target directory
-    local files=$(find "$target_directory" -type f)
+    # Step 1: Find valid files and directories in the global target directory
+    local files=$(find "$target_directory" -type f -not -path "$backup_dir/*")
+
+    if [ -z "$files" ]; then
+        echo "No readable files found in $target_directory"
+        return 1
+    fi
 
     # Step 2: Extract modification times and filenames using stat
     local file_info=$(stat --format='%Y :%y %n' $files)
@@ -77,9 +83,6 @@ sleep_after_backup(){
 while true; do
     ((cbw_counter++))
 
-    # Check if backup.log exists, if not create it
-    check_and_create_backup_log
-
     # Get the current timestamp in the desired format
     current_time=$(date +"%a %d %b %Y %I:%M:%S %p %Z")
 
@@ -88,12 +91,15 @@ while true; do
     check_and_create_ibw_location
     check_and_create_dbw_location
 
+    # Check if backup.log exists, if not create it
+    check_and_create_backup_log
+
     # STEP 1
     # Create tar backup of target_directory in cbw_location
     if tar -cf "$cbw_location/cbw24-$cbw_counter.tar" "$target_directory"; then
-        echo "$current_time cbw24-$cbw_counter.tar was created" >> backup.log
+        echo "$current_time cbw24-$cbw_counter.tar was created" >> "$backup_log_loc/backup.log"
     else
-        echo "$current_time Error creating tar archive: $cbw_location/cbw24-$cbw_counter.tar" >> backup.log
+        echo "$current_time Error creating tar archive: $cbw_location/cbw24-$cbw_counter.tar" >> "$backup_log_loc/backup.log"
     fi
 
     sleep_after_backup
@@ -107,12 +113,12 @@ while true; do
         ((ibw_counter++))
         # Create tar backup of target_directory in ibw_location
         if echo "$file_list" | tar -cf "$ibw_location/ibw24-$ibw_counter.tar" -T -; then
-            echo "$current_time ibw24-$ibw_counter.tar was created" >> backup.log
+            echo "$current_time ibw24-$ibw_counter.tar was created" >> "$backup_log_loc/backup.log"
         else
-            echo "$current_time Error creating tar archive: $ibw_location/ibw24-$ibw_counter.tar" >> backup.log
+            echo "$current_time Error creating tar archive: $ibw_location/ibw24-$ibw_counter.tar" >> "$backup_log_loc/backup.log"
         fi
     else
-        echo "$current_time No changes-Incremental backup was not created" >> backup.log
+        echo "$current_time No changes-Incremental backup was not created" >> "$backup_log_loc/backup.log"
     fi
 
     sleep_after_backup
@@ -126,12 +132,12 @@ while true; do
         ((ibw_counter++))
         # Create tar backup of target_directory in ibw_location
         if echo "$file_list" | tar -cf "$ibw_location/ibw24-$ibw_counter.tar" -T -; then
-            echo "$current_time ibw24-$ibw_counter.tar was created" >> backup.log
+            echo "$current_time ibw24-$ibw_counter.tar was created" >> "$backup_log_loc/backup.log"
         else
-            echo "$current_time Error creating tar archive: $ibw_location/ibw24-$ibw_counter.tar" >> backup.log
+            echo "$current_time Error creating tar archive: $ibw_location/ibw24-$ibw_counter.tar" >> "$backup_log_loc/backup.log"
         fi
     else
-        echo "$current_time No changes-Incremental backup was not created" >> backup.log
+        echo "$current_time No changes-Incremental backup was not created" >> "$backup_log_loc/backup.log"
     fi
 
     sleep_after_backup
@@ -145,12 +151,12 @@ while true; do
         ((dbw_counter++))
         # Create tar backup of target_directory in dbw_location
         if echo "$file_list" | tar -cf "$dbw_location/dbw24-$dbw_counter.tar" -T -; then
-            echo "$current_time dbw24-$dbw_counter.tar was created" >> backup.log
+            echo "$current_time dbw24-$dbw_counter.tar was created" >> "$backup_log_loc/backup.log"
         else
-            echo "$current_time Error creating tar archive: $dbw_location/dbw24-$dbw_counter.tar" >> backup.log
+            echo "$current_time Error creating tar archive: $dbw_location/dbw24-$dbw_counter.tar" >> "$backup_log_loc/backup.log"
         fi
     else
-        echo "$current_time No changes-differential backup was not created" >> backup.log
+        echo "$current_time No changes-differential backup was not created" >> "$backup_log_loc/backup.log"
     fi
 
     sleep_after_backup
@@ -164,12 +170,12 @@ while true; do
         ((ibw_counter++))
         # Create tar backup of target_directory in ibw_location
         if echo "$file_list" | tar -cf "$ibw_location/ibw24-$ibw_counter.tar" -T -; then
-            echo "$current_time ibw24-$ibw_counter.tar was created" >> backup.log
+            echo "$current_time ibw24-$ibw_counter.tar was created" >> "$backup_log_loc/backup.log"
         else
-            echo "$current_time Error creating tar archive: $ibw_location/ibw24-$ibw_counter.tar" >> backup.log
+            echo "$current_time Error creating tar archive: $ibw_location/ibw24-$ibw_counter.tar" >> "$backup_log_loc/backup.log"
         fi
     else
-        echo "$current_time No changes-Incremental backup was not created" >> backup.log
+        echo "$current_time No changes-Incremental backup was not created" >> "$backup_log_loc/backup.log"
     fi
 
 done
