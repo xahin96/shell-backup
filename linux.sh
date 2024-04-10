@@ -1,25 +1,40 @@
 #!/bin/bash
 
+# complete backup counter
 cbw_counter=0
+# incremental backup counter
 ibw_counter=0
+# differential backup counter
 dbw_counter=0
 
+# retreiving username
 username=$(whoami)
+# complete backup folder location
 cbw_location="/home/$username/home/backup/cbw24"
+# incremental backup folder location
 ibw_location="/home/$username/home/backup/ib24"
+# differential backup folder location
 dbw_location="/home/$username/home/backup/db24"
+# backup log file folder location
 backup_log_loc="/home/$username/home/backup"
+# backup parent folder location
 backup_dir="/home/$username/home"
-target_directory="/home/$username/Desktop"
+# target backup folder location
+target_directory="/home/$username/Desktop/ASP"
 
+# check and create backup log if not found
 check_and_create_backup_log() {
+    # checking if it's a regular file or not
     if [ ! -f "$backup_log_loc/backup.log" ]; then
         touch "$backup_log_loc/backup.log"
     fi
 }
 
+# check and create complete backup folders
 check_and_create_cbw_location() {
+    # checking if valid directory or not
     if [ ! -d "$cbw_location" ]; then
+        # if does not exist, creating the folder
         if mkdir -p "$cbw_location"; then
             echo "Created directory: $cbw_location"
         else
@@ -29,8 +44,11 @@ check_and_create_cbw_location() {
     fi
 }
 
+# check and create complete backup folders
 check_and_create_ibw_location() {
+    # checking if valid directory or not
     if [ ! -d "$ibw_location" ]; then
+        # if does not exist, creating the folder
         if mkdir -p "$ibw_location"; then
             echo "Created directory: $ibw_location"
         else
@@ -40,8 +58,11 @@ check_and_create_ibw_location() {
     fi
 }
 
+# check and create complete backup folders
 check_and_create_dbw_location() {
+    # checking if valid directory or not
     if [ ! -d "$dbw_location" ]; then
+        # if does not exist, creating the folder
         if mkdir -p "$dbw_location"; then
             echo "Created directory: $dbw_location"
         else
@@ -51,51 +72,58 @@ check_and_create_dbw_location() {
     fi
 }
 
+# method for searching all tge file that was updated specific time
+# duration ago
 get_recently_modified_files() {
+    # receiving the second passed for checking
     local seconds="$1"
 
-    # Step 1: Find valid files and directories in the global target directory
+    # Step 1: Finding files and directories in the target directory while skipping
+    # the backup directory as it will change regularly but no need for considering
+    # as a folder that requires backup
     local files=$(find "$target_directory" -type f -not -path "$backup_dir/*")
 
+    # checking is file list is not zero
     if [ -z "$files" ]; then
         echo "No readable files found in $target_directory"
         return 1
     fi
 
-    # Step 2: Extract modification times and filenames using stat
+    # Step 2: Extracting modification times and filenames using stat command
     local file_info=$(stat --format='%Y :%y %n' $files)
 
-    # Step 3: Calculate the timestamp for N seconds ago
+    # Step 3: Calculating the timestamp for specific seconds ago
     local timestamp=$(date -d "now - $seconds seconds" +'%s')
 
-    # Step 4: Filter files modified within the last N seconds
+    # Step 4: Filtering files modified within specific time
     local filtered_files=$(echo "$file_info" | awk -v d="$timestamp" '$1 >= d {print $NF}')
 
-    # Step 5: Return the filtered files
+    # Step 5: Returning the file list
     echo "$filtered_files"
 }
 
+# sleep utility method
 sleep_after_backup(){
   sleep 10
 }
 
 # Main loop
 while true; do
+    # incrementing complete backup counter everytime
     ((cbw_counter++))
 
-    # Get the current timestamp in the desired format
     current_time=$(date +"%a %d %b %Y %I:%M:%S %p %Z")
 
-    # Check if cbw_location exists, if not create it
+    # Check if the backup files exist or not. If not creating it
     check_and_create_cbw_location
     check_and_create_ibw_location
     check_and_create_dbw_location
 
-    # Check if backup.log exists, if not create it
+    # Check for backup.logs existance
     check_and_create_backup_log
 
     # STEP 1
-    # Create tar backup of target_directory in cbw_location
+    # Creating tar backup of target_directory in cbw_location
     if tar -cf "$cbw_location/cbw24-$cbw_counter.tar" "$target_directory"; then
         echo "$current_time cbw24-$cbw_counter.tar was created" >> "$backup_log_loc/backup.log"
     else
@@ -108,10 +136,12 @@ while true; do
     # Listing all the files that has been changed within past 2 minutes
     file_list=$(get_recently_modified_files "10")
 
-    # Compare checksums to check for changes
+    # checking if any file was found or not that was changed withtin last 2 minutes
+    # after taking the complete backup
     if [ -n "$file_list" ]; then
+        # incrementing the incremental backup counter if found
         ((ibw_counter++))
-        # Create tar backup of target_directory in ibw_location
+        # Creating tar backup of target_directory in ibw_location
         if echo "$file_list" | tar -cf "$ibw_location/ibw24-$ibw_counter.tar" -T -; then
             echo "$current_time ibw24-$ibw_counter.tar was created" >> "$backup_log_loc/backup.log"
         else
@@ -127,10 +157,12 @@ while true; do
     # Listing all the files that has been changed within past 2 minutes
     file_list=$(get_recently_modified_files "10")
 
-    # Compare checksums to check for changes
+    # checking if any file was found or not that was changed withtin last 2 minutes
+    # after taking the complete backup
     if [ -n "$file_list" ]; then
+        # incrementing the incremental backup counter if found
         ((ibw_counter++))
-        # Create tar backup of target_directory in ibw_location
+        # Creating tar backup of target_directory in ibw_location
         if echo "$file_list" | tar -cf "$ibw_location/ibw24-$ibw_counter.tar" -T -; then
             echo "$current_time ibw24-$ibw_counter.tar was created" >> "$backup_log_loc/backup.log"
         else
@@ -143,13 +175,15 @@ while true; do
     sleep_after_backup
 
     # STEP 4
-    # Listing all the files that has been changed within past 2 minutes
+    # Listing all the files that has been changed within past 6 minutes
     file_list=$(get_recently_modified_files "30")
 
-    # Compare checksums to check for changes
+    # checking if any file was found or not that was changed withtin last 2 minutes
+    # after taking the complete backup
     if [ -n "$file_list" ]; then
+        # incrementing the differential backup counter if found
         ((dbw_counter++))
-        # Create tar backup of target_directory in dbw_location
+        # Creating tar backup of target_directory in ibw_location
         if echo "$file_list" | tar -cf "$dbw_location/dbw24-$dbw_counter.tar" -T -; then
             echo "$current_time dbw24-$dbw_counter.tar was created" >> "$backup_log_loc/backup.log"
         else
@@ -165,10 +199,12 @@ while true; do
     # Listing all the files that has been changed within past 2 minutes
     file_list=$(get_recently_modified_files "10")
 
-    # Compare checksums to check for changes
+    # checking if any file was found or not that was changed withtin last 2 minutes
+    # after taking the complete backup
     if [ -n "$file_list" ]; then
+        # incrementing the incremental backup counter if found
         ((ibw_counter++))
-        # Create tar backup of target_directory in ibw_location
+        # Creating tar backup of target_directory in ibw_location
         if echo "$file_list" | tar -cf "$ibw_location/ibw24-$ibw_counter.tar" -T -; then
             echo "$current_time ibw24-$ibw_counter.tar was created" >> "$backup_log_loc/backup.log"
         else
